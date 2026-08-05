@@ -1,0 +1,143 @@
+package com.nhcarrigan.catalogservice.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nhcarrigan.catalogservice.dto.ProductRequest;
+import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
+class ProductControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private ProductRequest validRequest(String sku) {
+        ProductRequest request = new ProductRequest();
+        request.setName("Integration Test Product");
+        request.setSku(sku);
+        request.setCategory("Test Category");
+        request.setPrice(new BigDecimal("19.99"));
+        request.setStockQuantity(20);
+        return request;
+    }
+
+    @Test
+    void createProductReturns201AndBody() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name", is("Integration Test Product")))
+                .andExpect(jsonPath("$.stockQuantity", is(20)));
+    }
+
+    @Test
+    void createProductWithBlankNameReturns400() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setName("");
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Validation Failed")));
+    }
+
+    @Test
+    void createProductWithNegativePriceReturns400() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setPrice(new BigDecimal("-5.00"));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getUnknownProductReturns404() throws Exception {
+        mockMvc.perform(get("/api/products/999999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteProductRemovesIt() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        String body = mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(body).get("id").asLong();
+
+        mockMvc.perform(delete("/api/products/{id}", id))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/products/{id}", id))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void adjustStockRejectsDropBelowZero() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setStockQuantity(3);
+        String body = mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(body).get("id").asLong();
+
+        StockAdjustmentRequest adjustment = new StockAdjustmentRequest();
+        adjustment.setDelta(-4);
+
+        mockMvc.perform(patch("/api/products/{id}/stock", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(adjustment)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void adjustStockAppliesPositiveDelta() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setStockQuantity(3);
+        String body = mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(body).get("id").asLong();
+
+        StockAdjustmentRequest adjustment = new StockAdjustmentRequest();
+        adjustment.setDelta(7);
+
+        mockMvc.perform(patch("/api/products/{id}/stock", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(adjustment)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stockQuantity", is(10)));
+    }
+}
