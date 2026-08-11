@@ -140,4 +140,16 @@ class ProductControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stockQuantity", is(10)));
     }
+
+    @Test
+    void getUnknownProductReturns404WithCorrectShape() throws Exception {
+        mockMvc.perform(get("/api/products/999999"))
+                .andExpect(status().isNotFound())
+                .andExpectAll(
+                        jsonPath("$.timestamp").exists(),
+                        jsonPath("$.status", is(404)),
+                        jsonPath("$.error", is("Not Found")),
+                        jsonPath("$.message").exists(),
+                        jsonPath("$.details").exists());
+    }
 }
