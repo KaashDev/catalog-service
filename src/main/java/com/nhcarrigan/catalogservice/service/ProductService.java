@@ -11,6 +11,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Business logic for managing {@link Product} entities: enforces SKU
+ * uniqueness, looks products up by id (raising
+ * {@link com.nhcarrigan.catalogservice.exception.ProductNotFoundException}
+ * when missing), and applies stock adjustments under the invariant that
+ * stock can never go negative. Delegates persistence to
+ * {@link ProductRepository}.
+ */
 @Service
 public class ProductService {
 
@@ -20,22 +28,50 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
+    /**
+     * Returns every product in the catalog.
+     *
+     * @return the full list of products
+     */
     @Transactional(readOnly = true)
     public List<Product> findAll() {
         return productRepository.findAll();
     }
 
+    /**
+     * Retrieves a single product by its id.
+     *
+     * @param id the product id
+     * @return the matching product
+     * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException
+     *         if no product exists with the given id
+     */
     @Transactional(readOnly = true)
     public Product findById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
     }
 
+    /**
+     * Searches for products whose name contains the given substring,
+     * case-insensitive.
+     *
+     * @param name the substring to match against product names
+     * @return matching products, or an empty list if none match
+     */
     @Transactional(readOnly = true)
     public List<Product> searchByName(String name) {
         return productRepository.findByNameContainingIgnoreCase(name);
     }
 
+    /**
+     * Creates and persists a new product.
+     *
+     * @param request the fields for the new product
+     * @return the persisted product, including its generated id
+     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
+     *         if a product with the same SKU already exists
+     */
     @Transactional
     public Product create(ProductRequest request) {
         if (productRepository.existsBySku(request.getSku())) {
@@ -50,6 +86,17 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    /**
+     * Replaces all fields of an existing product.
+     *
+     * @param id      the id of the product to update
+     * @param request the new field values
+     * @return the updated, persisted product
+     * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException
+     *         if no product exists with the given id
+     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
+     *         if the new SKU collides with a different existing product
+     */
     @Transactional
     public Product update(Long id, ProductRequest request) {
         Product existing = findById(id);
@@ -67,6 +114,13 @@ public class ProductService {
         return productRepository.save(existing);
     }
 
+    /**
+     * Deletes a product by its id.
+     *
+     * @param id the id of the product to delete
+     * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException
+     *         if no product exists with the given id
+     */
     @Transactional
     public void delete(Long id) {
         Product existing = findById(id);
