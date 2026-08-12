@@ -82,7 +82,8 @@ public class ProductService {
                 request.getSku(),
                 request.getCategory(),
                 request.getPrice(),
-                request.getStockQuantity());
+                request.getStockQuantity(),
+                request.getDescription());
         return productRepository.save(product);
     }
 
@@ -111,6 +112,7 @@ public class ProductService {
         existing.setCategory(request.getCategory());
         existing.setPrice(request.getPrice());
         existing.setStockQuantity(request.getStockQuantity());
+        existing.setDescription(request.getDescription());
         return productRepository.save(existing);
     }
 

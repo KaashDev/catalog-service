@@ -11,6 +11,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -47,16 +48,21 @@ public class Product {
     @Column(nullable = false)
     private Integer stockQuantity;
 
+    @Column(length = 500)
+    @Size(max = 500, message = "Description must not exceed 500 characters")
+    private String description;
+
     protected Product() {
         // required by JPA
     }
 
-    public Product(String name, String sku, String category, BigDecimal price, Integer stockQuantity) {
+    public Product(String name, String sku, String category, BigDecimal price, Integer stockQuantity, String description) {
         this.name = name;
         this.sku = sku;
         this.category = category;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.description = description; // allowed to be null, since its Optional
     }
 
     public Long getId() {
@@ -105,5 +111,13 @@ public class Product {
 
     public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

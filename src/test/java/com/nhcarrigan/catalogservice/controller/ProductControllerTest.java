@@ -152,4 +152,16 @@ class ProductControllerTest {
                         jsonPath("$.message").exists(),
                         jsonPath("$.details").exists());
     }
+
+    @Test
+    void createDescriptionReturns201AndBody() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setDescription("This is a pilot Description for the product.");
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description", is("This is a pilot Description for the product.")));
+    }
 }
