@@ -23,7 +23,7 @@ public class ProductRequest {
     private String category;
 
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.01", message = "Price must be greater than zero")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0.00")
     private BigDecimal price;
 
     @NotNull(message = "Stock quantity is required")

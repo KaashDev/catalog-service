@@ -74,7 +74,20 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details[0]", is("price: Price must be greater than 0.00")));
+    }
+
+    @Test
+    void createProductWithZeroPriceReturns400() throws Exception {
+        ProductRequest request = validRequest("CTRL-SKU-" + System.nanoTime());
+        request.setPrice(new BigDecimal("0.00"));
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details[0]", is("price: Price must be greater than 0.00")));
     }
 
     @Test

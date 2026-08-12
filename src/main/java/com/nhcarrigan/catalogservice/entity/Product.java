@@ -39,7 +39,7 @@ public class Product {
     private String category;
 
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.01", message = "Price must be greater than zero")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0.00")
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
