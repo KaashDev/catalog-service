@@ -65,6 +65,16 @@ public class ProductService {
     }
 
     /**
+     * Returns every category currently in use across all products
+     *
+     * @return the distinct category values, or an empty list if the catalog has no products.
+     */
+    @Transactional(readOnly = true)
+    public List<String> listCategories(){
+        return productRepository.listCategories();
+    }
+
+    /**
      * Creates and persists a new product.
      *
      * @param request the fields for the new product

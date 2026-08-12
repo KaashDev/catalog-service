@@ -60,6 +60,16 @@ public class ProductController {
     }
 
     /**
+     * Returns every category currently in use across all products
+     *
+     * @return the distinct category values, or an empty list if the catalog has no products.
+     */
+    @GetMapping("/categories")
+    public List<String> getCategories() {
+        return productService.listCategories();
+    }
+
+    /**
      * Retrieves a single product by its id.
      *
      * @param id the product id
