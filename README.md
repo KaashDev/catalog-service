@@ -105,6 +105,7 @@ errors all return a consistent JSON error body (see
 `GlobalExceptionHandler`) with an appropriate HTTP status (`400`, `404`,
 `409`, `422`).
 
+All requests to the base path and its subpaths are logged with their method, path, and response status, in the format `[<method>] <path>: <status>`. For example, the stock adjustment example logs `[PATCH] /api/products/1/stock: 200`.
 ### Example: bulk stock adjustment
 
 Bulk stock adjustments accept a list of product IDs and signed stock deltas:
