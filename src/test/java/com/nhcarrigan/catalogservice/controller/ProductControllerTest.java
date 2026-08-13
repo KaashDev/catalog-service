@@ -123,6 +123,78 @@ class ProductControllerTest {
     }
 
     @Test
+    void searchByCategoryReturnsMatchingProducts() throws Exception {
+        mockMvc.perform(get("/api/products/search").param("category", "Electronics"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", not(empty())))
+                .andExpect(jsonPath("$[*].category", everyItem(is("Electronics"))));
+    }
+
+    @Test
+    void searchByUnknownCategoryReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/products/search").param("category", "NonExistentCategory"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", empty()));
+    }
+
+    @Test
+    void searchByEmptyCategoryReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/products/search").param("category", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", empty()));
+    }
+
+    @Test
+    void searchByNameReturnsMatchingProducts() throws Exception {
+        mockMvc.perform(get("/api/products/search").param("name", "Keyboard"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", not(empty())))
+                .andExpect(jsonPath("$[*].name", everyItem(containsStringIgnoringCase("Keyboard"))));
+    }
+
+    @Test
+    void searchByUnknownNameReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/products/search").param("name", "NoSuchProduct"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", empty()));
+    }
+
+    @Test
+    void searchWithoutParamsReturnsEmptyList() throws Exception {
+        mockMvc.perform(get("/api/products/search"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", empty()));
+    }
+
+    @Test
+    void searchWithBothNameAndCategoryReturns400() throws Exception {
+        mockMvc.perform(get("/api/products/search")
+                        .param("name", "Keyboard")
+                        .param("category", "Electronics"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Provide either a name or a category, not both")));
+    }
+
+    @Test
+    void searchWithNameAndBlankCategoryReturns400() throws Exception {
+        mockMvc.perform(get("/api/products/search")
+                        .param("name", "Keyboard")
+                        .param("category", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Bad Request")));
+    }
+
+    @Test
+    void searchWithBlankNameAndCategoryReturns400() throws Exception {
+        mockMvc.perform(get("/api/products/search")
+                        .param("name", "")
+                        .param("category", "Electronics"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Bad Request")));
+    }
+
+    @Test
     void getEmptyCategoriesReturnsEmpty() throws Exception{
         productRepository.deleteAll();
         mockMvc.perform(get("/api/products/categories"))

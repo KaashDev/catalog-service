@@ -66,4 +66,11 @@ public class GlobalExceptionHandler {
                 List.of());
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
     }
+
+    @ExceptionHandler(InvalidSearchCriteriaException.class)
+    public ResponseEntity<ApiError> handleInvalidSearchCriteria(InvalidSearchCriteriaException ex) {
+        ApiError body = new ApiError(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), List.of());
+        return ResponseEntity.badRequest().body(body);
+    }
 }

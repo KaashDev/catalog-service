@@ -4,8 +4,9 @@ A small, genuinely-runnable inventory/catalog REST API, built as the starter
 repo for the freeCodeCamp/NHCarrigan Summer 2026 Cohort sprint phase.
 
 Products have a name, SKU, category, price, and stock quantity. The API
-supports full CRUD, searching by name, and a dedicated stock-adjustment
-endpoint that enforces "stock can never go negative" as a hard business rule.
+supports full CRUD, searching by name or by category, and a dedicated
+stock-adjustment endpoint that enforces "stock can never go negative" as a
+hard business rule.
 
 This is a real Spring Boot app, not a toy: layered architecture (controller →
 service → repository), Bean Validation on every input, transactional
@@ -72,11 +73,14 @@ Base path: `/api/products`
 | GET    | `/api/products`          | List all products                              |
 | GET    | `/api/products/{id}`     | Get a single product by id                     |
 | GET    | `/api/products/search?name=` | Search products by name (substring, case-insensitive) |
+| GET    | `/api/products/search?category=` | Search products by category (substring, case-insensitive) |
 | POST   | `/api/products`          | Create a product                               |
 | PUT    | `/api/products/{id}`     | Replace a product's fields                     |
 | DELETE | `/api/products/{id}`     | Delete a product                               |
 | PATCH  | `/api/products/{id}/stock` | Adjust stock by a signed delta (`{"delta": -3}`); rejected with `422` if it would go below zero |
 | PATCH  | `/api/products/stock/bulk` | Apply multiple stock adjustments atomically; rejected with `422` if any adjustment would make stock negative |
+
+`name` and `category` are mutually exclusive: passing both (even if one is blank) returns `400`.
 
 Health check: `GET /actuator/health` (Spring Boot Actuator).
 

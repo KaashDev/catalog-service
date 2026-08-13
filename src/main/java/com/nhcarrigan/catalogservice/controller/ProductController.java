@@ -5,6 +5,7 @@ import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.exception.InvalidSearchCriteriaException;
 import com.nhcarrigan.catalogservice.service.ProductService;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.Valid;
@@ -55,15 +56,29 @@ public class ProductController {
     }
 
     /**
-     * Searches for products whose name contains the given substring,
-     * case-insensitive.
+     * Searches for products by a name substring or a category substring,
+     * both case-insensitive. The two filters are mutually exclusive: pass
+     * exactly one. Providing both, even if one is blank, is
+     * rejected with a {@code 400}.
      *
-     * @param name the substring to match against product names
-     * @return matching products, or an empty list if none match
+     * @param name an optional substring to match against product names
+     * @param category an optional substring to match against product categories
+     * @return matching products, or an empty list if none match or no filter is given
+     * @throws com.nhcarrigan.catalogservice.exception.InvalidSearchCriteriaException
+     *         if both name and category are provided
      */
     @GetMapping("/search")
-    public List<Product> search(@RequestParam String name) {
-        return productService.searchByName(name);
+    public List<Product> search(@RequestParam(required = false) String name, @RequestParam(required = false) String category) {
+        if (name != null && category != null) {
+            throw new InvalidSearchCriteriaException();
+        }
+        if (name != null && !name.isBlank()) {
+            return productService.searchByName(name);
+        }
+        if (category != null && !category.isBlank()) {
+            return productService.searchByCategory(category);
+        }
+        return List.of();
     }
 
     /**

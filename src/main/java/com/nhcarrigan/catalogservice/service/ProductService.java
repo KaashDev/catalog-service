@@ -72,6 +72,18 @@ public class ProductService {
     }
 
     /**
+     * Searches for products whose category contains the given substring,
+     * case-insensitive.
+     *
+     * @param category the substring to match against product categories
+     * @return matching products, or an empty list if none match
+     */
+    @Transactional(readOnly = true)
+    public List<Product> searchByCategory(String category) {
+        return productRepository.findByCategoryContainingIgnoreCase(category);
+    }
+
+    /**
      * Returns every category currently in use across all products
      *
      * @return the distinct category values, or an empty list if the catalog has no products.
