@@ -1,10 +1,12 @@
 package com.nhcarrigan.catalogservice.controller;
 
+import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.service.ProductService;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -147,5 +149,18 @@ public class ProductController {
     @PatchMapping("/{id}/stock")
     public Product adjustStock(@PathVariable Long id, @Valid @RequestBody StockAdjustmentRequest request) {
         return productService.adjustStock(id, request.getDelta());
+    }
+
+    /**
+     * Applies multiple stock adjustments as one atomic operation.
+     *
+     * @param adjustments the stock adjustments to apply
+     * @return the products with their updated stock quantities
+     */
+    @PatchMapping("/stock/bulk")
+    public List<Product> bulkAdjustStock(
+            @NotEmpty(message = "At least one stock adjustment is required")
+            @RequestBody List<@Valid BulkStockAdjustmentRequest> adjustments) {
+        return productService.bulkAdjustStock(adjustments);
     }
 }
