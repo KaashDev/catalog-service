@@ -3,7 +3,10 @@ package com.nhcarrigan.catalogservice.repository;
 import com.nhcarrigan.catalogservice.entity.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +22,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT DISTINCT p.category FROM Product p")
     List<String> listCategories();
+
+    //Price Range Filter
+    Page<Product> findByPriceGreaterThanEqual(BigDecimal minPrice, Pageable pageable); //only a floor
+    Page<Product> findByPriceLessThanEqual(BigDecimal maxPrice, Pageable pageable); //only a ceiling
+    Page<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable); //both floor and ceiling
+
 }

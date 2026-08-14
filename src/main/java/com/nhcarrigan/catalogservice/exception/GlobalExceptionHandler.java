@@ -73,4 +73,11 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), List.of());
         return ResponseEntity.badRequest().body(body);
     }
+
+    @ExceptionHandler(InvalidPriceRangeException.class)
+    public ResponseEntity<ApiError> handleInvalidPriceRange(InvalidPriceRangeException ex) {
+        ApiError body = new ApiError(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(), List.of());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
 }

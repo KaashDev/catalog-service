@@ -498,4 +498,42 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.totalElements", is(7)))
                 .andExpect(jsonPath("$.totalPages", is(1)));
     }
+
+    @Test
+    void filterByPriceMinOnlyReturnsMatchingProducts() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("minPrice", "45"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(3)))
+                .andExpect(jsonPath("$.totalElements", is(3)));
+    }
+
+    @Test
+    void filterByPriceMaxOnlyReturnsMatchingProducts() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("maxPrice", "25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(3)))
+                .andExpect(jsonPath("$.totalElements", is(3)));
+    }
+
+    @Test
+    void filterByPriceMinAndMaxReturnsMatchingProducts() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("minPrice", "18")
+                        .param("maxPrice", "60"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(5)))
+                .andExpect(jsonPath("$.totalElements", is(5)));
+    }
+
+    @Test
+    void filterByPriceReversedReturns400() throws Exception {
+        mockMvc.perform(get("/api/products")
+                        .param("minPrice", "60")
+                        .param("maxPrice", "18"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Cannot filter using reversed price range: minimum 60 is greater than maximum 18")));
+    }
 }

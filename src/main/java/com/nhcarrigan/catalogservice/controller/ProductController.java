@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 /**
  * REST controller exposing CRUD and search operations for {@link Product}
@@ -44,16 +45,23 @@ public class ProductController {
     }
 
     /**
-     * Returns a paginated list of products in the catalog.
+     * Returns a paginated list of products, with support for sorting and optional filtering by price range.
+     * <p>If neither minPrice nor maxPrice is supplied, all products are returned.</p>
      *
      * @param pageable the pagination information (page number, size, sort)
+     * @param minPrice the minimum price filter for products or null to leave that bound unfiltered
+     * @param maxPrice the maximum price filter for products or null to leave that bound unfiltered
      * @return a paginated response containing products and pagination metadata
+     * @throws com.nhcarrigan.catalogservice.exception.InvalidPriceRangeException
+     *         if the given price range is reversed
      */
     @GetMapping
     public ProductPageResponse getAll(
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ProductPageResponse.from(productService.findAll(pageable));
+            @PageableDefault(size = 20) Pageable pageable, @RequestParam(required = false) BigDecimal minPrice, @RequestParam(required = false) BigDecimal maxPrice) {
+        return ProductPageResponse.from(productService.filterByPrice(minPrice, maxPrice,pageable));
     }
+
+
 
     /**
      * Searches for products by a name substring or a category substring,
