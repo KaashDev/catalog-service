@@ -1,21 +1,13 @@
 package com.nhcarrigan.catalogservice.dto;
 
 import com.nhcarrigan.catalogservice.entity.Product;
+import java.util.List;
 import org.springframework.data.domain.Page;
 
-import java.util.List;
+public record ProductPageResponse(List<Product> content, long totalElements, int totalPages) {
 
-public record ProductPageResponse(
-        List<Product> content,
-        long totalElements,
-        int totalPages
-) {
-
-    public static ProductPageResponse from(Page<Product> page) {
-        return new ProductPageResponse(
-                page.getContent(),
-                page.getTotalElements(),
-                page.getTotalPages()
-        );
-    }
+  public static ProductPageResponse from(Page<Product> page) {
+    return new ProductPageResponse(
+        page.getContent(), page.getTotalElements(), page.getTotalPages());
+  }
 }

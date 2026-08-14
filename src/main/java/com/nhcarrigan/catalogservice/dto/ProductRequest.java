@@ -5,79 +5,76 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 import java.math.BigDecimal;
 
-/**
- * Payload for creating or fully updating a product.
- */
+/** Payload for creating or fully updating a product. */
 public class ProductRequest {
 
-    @NotBlank(message = "Name must not be blank")
-    private String name;
+  @NotBlank(message = "Name must not be blank")
+  private String name;
 
-    @NotBlank(message = "SKU must not be blank")
-    private String sku;
+  @NotBlank(message = "SKU must not be blank")
+  private String sku;
 
-    @NotBlank(message = "Category must not be blank")
-    private String category;
+  @NotBlank(message = "Category must not be blank")
+  private String category;
 
-    @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.01", message = "Price must be greater than 0.00")
-    private BigDecimal price;
+  @NotNull(message = "Price is required")
+  @DecimalMin(value = "0.01", message = "Price must be greater than 0.00")
+  private BigDecimal price;
 
-    @NotNull(message = "Stock quantity is required")
-    @Min(value = 0, message = "Stock quantity cannot be negative")
-    private Integer stockQuantity;
+  @NotNull(message = "Stock quantity is required")
+  @Min(value = 0, message = "Stock quantity cannot be negative")
+  private Integer stockQuantity;
 
-    @Size(max = 500, message = "Description must not exceed 500 characters")
-    private String description;
+  @Size(max = 500, message = "Description must not exceed 500 characters")
+  private String description;
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public String getSku() {
-        return sku;
-    }
+  public String getSku() {
+    return sku;
+  }
 
-    public void setSku(String sku) {
-        this.sku = sku;
-    }
+  public void setSku(String sku) {
+    this.sku = sku;
+  }
 
-    public String getCategory() {
-        return category;
-    }
+  public String getCategory() {
+    return category;
+  }
 
-    public void setCategory(String category) {
-        this.category = category;
-    }
+  public void setCategory(String category) {
+    this.category = category;
+  }
 
-    public BigDecimal getPrice() {
-        return price;
-    }
+  public BigDecimal getPrice() {
+    return price;
+  }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
+  public void setPrice(BigDecimal price) {
+    this.price = price;
+  }
 
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
+  public Integer getStockQuantity() {
+    return stockQuantity;
+  }
 
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
-    }
+  public void setStockQuantity(Integer stockQuantity) {
+    this.stockQuantity = stockQuantity;
+  }
 
-    public String getDescription() {
-        return description;
-    }
+  public String getDescription() {
+    return description;
+  }
 
-    public void setDescription(String description){
-        this.description = description;
-    }
-} 
+  public void setDescription(String description) {
+    this.description = description;
+  }
+}
