@@ -129,6 +129,21 @@ public class ProductController {
   }
 
   /**
+   * Creates multiple new products as one atomic operation.
+   *
+   * @param requests the products' fields to create; validated via {@link Valid}
+   * @return a 201 response containing the newly created products
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if a product with the
+   *     same SKU already exists or if two products in the request share the same SKU
+   */
+  @PostMapping("/bulk")
+  public ResponseEntity<List<Product>> bulkCreate(
+          @NotEmpty(message = "At least one product is required")
+          @RequestBody List<@Valid ProductRequest> requests) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(productService.bulkCreate(requests));
+  }
+
+  /**
    * Replaces all fields of an existing product.
    *
    * @param id the id of the product to update
