@@ -15,6 +15,8 @@ import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
 import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +116,54 @@ class ProductControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[0]", is("price: Price must be greater than 0.00")));
+  }
+
+  @Test
+  void bulkCreateProductReturns201AndBody() throws Exception {
+    ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
+    ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
+    List<ProductRequest> requests  = List.of(request1, request2);
+
+    mockMvc
+            .perform(
+                    post("/api/products/bulk")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requests)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].name", is("Integration Test Product")))
+            .andExpect(jsonPath("$[1].stockQuantity", is(20)));
+  }
+
+  @Test
+  void bulkCreateProductReturnsConflictWhenProductsCollide() throws Exception {
+    createTestProduct("SKU-9000", 20);
+    ProductRequest request1 = validRequest("SKU-9000");
+    ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
+    List<ProductRequest> requests  = List.of(request1, request2);
+
+    mockMvc
+            .perform(
+                    post("/api/products/bulk")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requests)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error", is("Conflict")));
+  }
+
+  @Test
+  void bulkCreateProductReturnsConflictWhenProductsInBatchShareSKU() throws Exception {
+    ProductRequest request1 = validRequest("SKU-6000");
+    ProductRequest request2 = validRequest("SKU-6000");
+    List<ProductRequest> requests  = List.of(request1, request2);
+
+    mockMvc
+            .perform(
+                    post("/api/products/bulk")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requests)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error", is("Conflict")));
   }
 
   @Test
