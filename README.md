@@ -105,6 +105,8 @@ errors all return a consistent JSON error body (see
 `GlobalExceptionHandler`) with an appropriate HTTP status (`400`, `404`,
 `409`, `422`).
 
+Creation with duplicate names (and distinct SKUs) is allowed, but the response (`201`) contains a `"warning"` field.
+
 All requests to the base path and its subpaths are logged with their method, path, and response status, in the format `[<method>] <path>: <status>`. For example, the stock adjustment example logs `[PATCH] /api/products/1/stock: 200`.
 ### Example: bulk stock adjustment
 

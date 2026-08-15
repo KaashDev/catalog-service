@@ -1,6 +1,7 @@
 package com.nhcarrigan.catalogservice.controller;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
+import com.nhcarrigan.catalogservice.dto.ProductCreationResponse;
 import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
@@ -114,19 +115,26 @@ public class ProductController {
     return productService.findById(id);
   }
 
-  /**
-   * Creates a new product.
-   *
-   * @param request the product fields to create; validated via {@link Valid}
-   * @return a 201 response containing the newly created product
-   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if a product with the
-   *     same SKU already exists
-   */
-  @PostMapping
-  public ResponseEntity<Product> create(@Valid @RequestBody ProductRequest request) {
-    Product created = productService.create(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(created);
-  }
+    /**
+     * Creates a new product.
+     *
+     * @param request the product fields to create; validated via
+     *                 {@link Valid}
+     * @return a 201 response containing the newly created product
+     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
+     *         if a product with the same SKU already exists
+     */
+    @PostMapping
+    public ResponseEntity<ProductCreationResponse> create(@Valid @RequestBody ProductRequest request) {
+        boolean isDuplicateName = !productService.searchByExactName(request.getName()).isEmpty();
+
+        Product created = productService.create(request);
+
+        ProductCreationResponse pcr = new ProductCreationResponse(created,
+                isDuplicateName ? "Duplicate Name" : null);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(pcr);
+    }
 
   /**
    * Replaces all fields of an existing product.

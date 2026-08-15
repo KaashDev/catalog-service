@@ -69,6 +69,17 @@ public class ProductService {
   }
 
   /**
+   * Searches for products whose name exactly matches the given string, case-insensitive.
+   *
+   * @param name the string to match against product names
+   * @return matching products, or an empty list if none match
+   */
+  @Transactional(readOnly = true)
+  public List<Product> searchByExactName(String name) {
+    return productRepository.findByNameIgnoreCase(name);
+  }
+
+  /**
    * Searches for products whose category contains the given substring, case-insensitive.
    *
    * @param category the substring to match against product categories
