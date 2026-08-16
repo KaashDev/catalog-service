@@ -6,10 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.exception.DuplicateSkuException;
 import com.nhcarrigan.catalogservice.exception.InsufficientStockException;
 import com.nhcarrigan.catalogservice.exception.ProductNotFoundException;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
+import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,8 @@ class ProductServiceTest {
   @Autowired private ProductService productService;
 
   @Autowired private ProductRepository productRepository;
+
+  @Autowired private StockAdjustmentLogRepository stockAdjustmentLogRepository;
 
   private Product testProduct;
 
@@ -86,6 +90,20 @@ class ProductServiceTest {
   }
 
   @Test
+  void adjustStockCreatesExactlyOneLog() {
+    productService.adjustStock(testProduct.getId(), 5);
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+
+    assertThat(logs).hasSize(1);
+    assertThat(logs.get(0).getProductId()).isEqualTo(testProduct.getId());
+    assertThat(logs.get(0).getDelta()).isEqualTo(5);
+    assertThat(logs.get(0).getResultingQuantity()).isEqualTo(15);
+    assertThat(logs.get(0).getTimestamp()).isNotNull();
+  }
+
+  @Test
   void adjustStockDecrementsQuantity() {
     Product updated = productService.adjustStock(testProduct.getId(), -4);
     assertThat(updated.getStockQuantity()).isEqualTo(6);
@@ -99,6 +117,17 @@ class ProductServiceTest {
     // stock must be unchanged after the rejected operation
     Product reloaded = productRepository.findById(testProduct.getId()).orElseThrow();
     assertThat(reloaded.getStockQuantity()).isEqualTo(10);
+  }
+
+  @Test
+  void rejectedAdjustmentCreatesNoLog() {
+    assertThatThrownBy(() -> productService.adjustStock(testProduct.getId(), -11))
+            .isInstanceOf(InsufficientStockException.class);
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+
+    assertThat(logs).isEmpty();
   }
 
   @Test
@@ -127,6 +156,32 @@ class ProductServiceTest {
 
     assertThat(productRepository.findById(secondProduct.getId()).orElseThrow().getStockQuantity())
         .isEqualTo(16);
+  }
+
+  @Test
+  void bulkAdjustStockCreatesOneLogPerAdjustment() {
+    Product secondProduct = createTestProduct("TEST-SKU-" + System.nanoTime(), 20);
+
+    List<BulkStockAdjustmentRequest> adjustments =
+            List.of(
+                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+                    new BulkStockAdjustmentRequest(secondProduct.getId(), -4));
+
+    productService.bulkAdjustStock(adjustments);
+
+    List<StockAdjustmentLog> firstProductLogs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+
+    List<StockAdjustmentLog> secondProductLogs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(secondProduct.getId());
+
+    assertThat(firstProductLogs).hasSize(1);
+    assertThat(firstProductLogs.get(0).getDelta()).isEqualTo(5);
+    assertThat(firstProductLogs.get(0).getResultingQuantity()).isEqualTo(15);
+
+    assertThat(secondProductLogs).hasSize(1);
+    assertThat(secondProductLogs.get(0).getDelta()).isEqualTo(-4);
+    assertThat(secondProductLogs.get(0).getResultingQuantity()).isEqualTo(16);
   }
 
   @Test
@@ -190,5 +245,26 @@ class ProductServiceTest {
     List<Product> updated = productService.bulkAdjustStock(adjustments);
 
     assertThat(updated).hasSize(1).first().extracting(Product::getStockQuantity).isEqualTo(12);
+  }
+
+  @Test
+  void bulkAdjustStockCreatesLogForEachRepeatedAdjustment() {
+    List<BulkStockAdjustmentRequest> adjustments =
+            List.of(
+                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+                    new BulkStockAdjustmentRequest(testProduct.getId(), -3));
+
+    productService.bulkAdjustStock(adjustments);
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+
+    assertThat(logs).hasSize(2);
+
+    assertThat(logs.get(0).getDelta()).isEqualTo(-3);
+    assertThat(logs.get(0).getResultingQuantity()).isEqualTo(12);
+
+    assertThat(logs.get(1).getDelta()).isEqualTo(5);
+    assertThat(logs.get(1).getResultingQuantity()).isEqualTo(15);
   }
 }

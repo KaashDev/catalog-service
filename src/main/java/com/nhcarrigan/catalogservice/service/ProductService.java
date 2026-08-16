@@ -3,11 +3,13 @@ package com.nhcarrigan.catalogservice.service;
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.exception.DuplicateSkuException;
 import com.nhcarrigan.catalogservice.exception.InsufficientStockException;
 import com.nhcarrigan.catalogservice.exception.InvalidPriceRangeException;
 import com.nhcarrigan.catalogservice.exception.ProductNotFoundException;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
+import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,9 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
 
   private final ProductRepository productRepository;
+  private final StockAdjustmentLogRepository stockAdjustmentLogRepository;
 
-  public ProductService(ProductRepository productRepository) {
+  public ProductService(
+      ProductRepository productRepository,
+      StockAdjustmentLogRepository stockAdjustmentLogRepository) {
     this.productRepository = productRepository;
+    this.stockAdjustmentLogRepository = stockAdjustmentLogRepository;
   }
 
   /**
@@ -55,6 +61,12 @@ public class ProductService {
   @Transactional(readOnly = true)
   public Product findById(Long id) {
     return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+  }
+
+  @Transactional(readOnly = true)
+  public List<StockAdjustmentLog> getStockHistory(Long productId) {
+    findById(productId);
+    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(productId);
   }
 
   /**
@@ -175,11 +187,17 @@ public class ProductService {
   public Product adjustStock(Long id, int delta) {
     Product product = findById(id);
     int newQuantity = product.getStockQuantity() + delta;
+
     if (newQuantity < 0) {
       throw new InsufficientStockException(id, product.getStockQuantity(), delta);
     }
+
     product.setStockQuantity(newQuantity);
-    return productRepository.save(product);
+    Product savedProduct = productRepository.save(product);
+
+    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity));
+
+    return savedProduct;
   }
 
   /**
@@ -201,6 +219,7 @@ public class ProductService {
 
     Map<Long, Product> productsById = new LinkedHashMap<>();
     Map<Long, Integer> projectedStock = new LinkedHashMap<>();
+    List<StockAdjustmentLog> logs = new ArrayList<>();
 
     // Phase 1: validate the entire batch without changing any product.
     for (BulkStockAdjustmentRequest adjustment : adjustments) {
@@ -217,6 +236,8 @@ public class ProductService {
       }
 
       projectedStock.put(productId, newQuantity);
+
+      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity));
     }
 
     // Phase 2: apply changes only after the entire batch is valid.
@@ -224,6 +245,8 @@ public class ProductService {
       Product product = entry.getValue();
       product.setStockQuantity(projectedStock.get(entry.getKey()));
     }
+
+    stockAdjustmentLogRepository.saveAll(logs);
 
     return new ArrayList<>(productsById.values());
   }

@@ -6,6 +6,7 @@ import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.exception.InvalidSearchCriteriaException;
 import com.nhcarrigan.catalogservice.service.ProductService;
 import jakarta.validation.Valid;
@@ -113,6 +114,19 @@ public class ProductController {
   @GetMapping("/{id}")
   public Product getById(@PathVariable Long id) {
     return productService.findById(id);
+  }
+
+  /**
+   * Returns the stock adjustment history for a product, newest first.
+   *
+   * @param id the id of the product whose stock history is being requested
+   * @return the product's stock adjustment history
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
+   *     with the given id
+   */
+  @GetMapping("/{id}/stock-history")
+  public List<StockAdjustmentLog> getStockHistory(@PathVariable Long id) {
+    return productService.getStockHistory(id);
   }
 
     /**
