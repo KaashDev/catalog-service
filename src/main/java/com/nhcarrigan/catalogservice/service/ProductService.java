@@ -1,6 +1,7 @@
 package com.nhcarrigan.catalogservice.service;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
+import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -281,5 +283,22 @@ public class ProductService {
     } else {
       return productRepository.findAll(pageable);
     }
+  }
+
+  @Transactional(readOnly = true)
+  public InventoryValueResponse getInventoryValue() {
+    BigDecimal totalValue = productRepository.calculateTotalInventoryValue();
+
+    Map<String, BigDecimal> byCategory =
+        productRepository.calculateInventoryValueByCategory()
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    row -> (String) row[0],
+                    row -> (BigDecimal) row[1],
+                    BigDecimal::add,
+                    LinkedHashMap::new));
+
+    return new InventoryValueResponse(totalValue, byCategory);
   }
 }
