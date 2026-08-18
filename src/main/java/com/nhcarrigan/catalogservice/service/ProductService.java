@@ -1,16 +1,24 @@
 package com.nhcarrigan.catalogservice.service;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
+import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.exception.DuplicateSkuException;
 import com.nhcarrigan.catalogservice.exception.InsufficientStockException;
 import com.nhcarrigan.catalogservice.exception.InvalidPriceRangeException;
 import com.nhcarrigan.catalogservice.exception.ProductNotFoundException;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
+import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
 import java.util.*;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,9 +34,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
 
   private final ProductRepository productRepository;
+  private final StockAdjustmentLogRepository stockAdjustmentLogRepository;
 
-  public ProductService(ProductRepository productRepository) {
+  public ProductService(
+      ProductRepository productRepository,
+      StockAdjustmentLogRepository stockAdjustmentLogRepository) {
     this.productRepository = productRepository;
+    this.stockAdjustmentLogRepository = stockAdjustmentLogRepository;
   }
 
   /**
@@ -55,6 +67,12 @@ public class ProductService {
     return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
   }
 
+  @Transactional(readOnly = true)
+  public List<StockAdjustmentLog> getStockHistory(Long productId) {
+    findById(productId);
+    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(productId);
+  }
+
   /**
    * Searches for products whose name contains the given substring, case-insensitive.
    *
@@ -64,6 +82,17 @@ public class ProductService {
   @Transactional(readOnly = true)
   public List<Product> searchByName(String name) {
     return productRepository.findByNameContainingIgnoreCase(name);
+  }
+
+  /**
+   * Searches for products whose name exactly matches the given string, case-insensitive.
+   *
+   * @param name the string to match against product names
+   * @return matching products, or an empty list if none match
+   */
+  @Transactional(readOnly = true)
+  public List<Product> searchByExactName(String name) {
+    return productRepository.findByNameIgnoreCase(name);
   }
 
   /**
@@ -199,11 +228,17 @@ public class ProductService {
   public Product adjustStock(Long id, int delta) {
     Product product = findById(id);
     int newQuantity = product.getStockQuantity() + delta;
+
     if (newQuantity < 0) {
       throw new InsufficientStockException(id, product.getStockQuantity(), delta);
     }
+
     product.setStockQuantity(newQuantity);
-    return productRepository.save(product);
+    Product savedProduct = productRepository.save(product);
+
+    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity));
+
+    return savedProduct;
   }
 
   /**
@@ -225,6 +260,7 @@ public class ProductService {
 
     Map<Long, Product> productsById = new LinkedHashMap<>();
     Map<Long, Integer> projectedStock = new LinkedHashMap<>();
+    List<StockAdjustmentLog> logs = new ArrayList<>();
 
     // Phase 1: validate the entire batch without changing any product.
     for (BulkStockAdjustmentRequest adjustment : adjustments) {
@@ -241,6 +277,8 @@ public class ProductService {
       }
 
       projectedStock.put(productId, newQuantity);
+
+      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity));
     }
 
     // Phase 2: apply changes only after the entire batch is valid.
@@ -248,6 +286,8 @@ public class ProductService {
       Product product = entry.getValue();
       product.setStockQuantity(projectedStock.get(entry.getKey()));
     }
+
+    stockAdjustmentLogRepository.saveAll(logs);
 
     return new ArrayList<>(productsById.values());
   }
@@ -282,5 +322,22 @@ public class ProductService {
     } else {
       return productRepository.findAll(pageable);
     }
+  }
+
+  @Transactional(readOnly = true)
+  public InventoryValueResponse getInventoryValue() {
+    BigDecimal totalValue = productRepository.calculateTotalInventoryValue();
+
+    Map<String, BigDecimal> byCategory =
+        productRepository.calculateInventoryValueByCategory()
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    row -> (String) row[0],
+                    row -> (BigDecimal) row[1],
+                    BigDecimal::add,
+                    LinkedHashMap::new));
+
+    return new InventoryValueResponse(totalValue, byCategory);
   }
 }

@@ -74,6 +74,7 @@ Base path: `/api/products`
 | GET    | `/api/products/{id}`     | Get a single product by id                     |
 | GET    | `/api/products/search?name=` | Search products by name (substring, case-insensitive) |
 | GET    | `/api/products/search?category=` | Search products by category (substring, case-insensitive) |
+| GET    | `/api/products/inventory-value` | Get the total inventory value and its breakdown by category. |
 | POST   | `/api/products`          | Create a product                               |
 | PUT    | `/api/products/{id}`     | Replace a product's fields                     |
 | DELETE | `/api/products/{id}`     | Delete a product                               |
@@ -104,6 +105,8 @@ Validation failures, not-found lookups, duplicate SKUs, and insufficient-stock
 errors all return a consistent JSON error body (see
 `GlobalExceptionHandler`) with an appropriate HTTP status (`400`, `404`,
 `409`, `422`).
+
+Creation with duplicate names (and distinct SKUs) is allowed, but the response (`201`) contains a `"warning"` field.
 
 All requests to the base path and its subpaths are logged with their method, path, and response status, in the format `[<method>] <path>: <status>`. For example, the stock adjustment example logs `[PATCH] /api/products/1/stock: 200`.
 ### Example: bulk stock adjustment

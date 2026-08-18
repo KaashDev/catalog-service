@@ -1,10 +1,13 @@
 package com.nhcarrigan.catalogservice.controller;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
+import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
+import com.nhcarrigan.catalogservice.dto.ProductCreationResponse;
 import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.exception.InvalidSearchCriteriaException;
 import com.nhcarrigan.catalogservice.service.ProductService;
 import jakarta.validation.Valid;
@@ -102,6 +105,16 @@ public class ProductController {
   }
 
   /**
+   * Returns the total inventory value and its breakdown by category.
+   *
+   * @return an {@link InventoryValueResponse} containing the total value and category breakdown
+   */
+  @GetMapping("/inventory-value")
+  public InventoryValueResponse getInventoryValue() {
+      return productService.getInventoryValue();
+  }
+
+  /**
    * Retrieves a single product by its id.
    *
    * @param id the product id
@@ -115,18 +128,38 @@ public class ProductController {
   }
 
   /**
-   * Creates a new product.
+   * Returns the stock adjustment history for a product, newest first.
    *
-   * @param request the product fields to create; validated via {@link Valid}
-   * @return a 201 response containing the newly created product
-   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if a product with the
-   *     same SKU already exists
+   * @param id the id of the product whose stock history is being requested
+   * @return the product's stock adjustment history
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
+   *     with the given id
    */
-  @PostMapping
-  public ResponseEntity<Product> create(@Valid @RequestBody ProductRequest request) {
-    Product created = productService.create(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(created);
+  @GetMapping("/{id}/stock-history")
+  public List<StockAdjustmentLog> getStockHistory(@PathVariable Long id) {
+    return productService.getStockHistory(id);
   }
+
+    /**
+     * Creates a new product.
+     *
+     * @param request the product fields to create; validated via
+     *                 {@link Valid}
+     * @return a 201 response containing the newly created product
+     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
+     *         if a product with the same SKU already exists
+     */
+    @PostMapping
+    public ResponseEntity<ProductCreationResponse> create(@Valid @RequestBody ProductRequest request) {
+        boolean isDuplicateName = !productService.searchByExactName(request.getName()).isEmpty();
+
+        Product created = productService.create(request);
+
+        ProductCreationResponse pcr = new ProductCreationResponse(created,
+                isDuplicateName ? "Duplicate Name" : null);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(pcr);
+    }
 
   /**
    * Creates multiple new products as one atomic operation.

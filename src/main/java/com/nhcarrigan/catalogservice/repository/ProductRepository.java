@@ -17,6 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   List<Product> findByNameContainingIgnoreCase(String name);
 
+  List<Product> findByNameIgnoreCase(String name);
+
   List<Product> findByCategoryContainingIgnoreCase(String category);
 
   @Query("SELECT DISTINCT p.category FROM Product p")
@@ -29,4 +31,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   Page<Product> findByPriceBetween(
       BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable); // both floor and ceiling
+
+  @Query("""
+      SELECT COALESCE(SUM(p.price * p.stockQuantity), 0)
+      FROM Product p
+      """)
+  BigDecimal calculateTotalInventoryValue();
+
+  @Query("""
+      SELECT p.category, COALESCE(SUM(p.price * p.stockQuantity), 0)
+      FROM Product p
+      GROUP BY p.category
+      """)
+  List<Object[]> calculateInventoryValueByCategory();
 }
