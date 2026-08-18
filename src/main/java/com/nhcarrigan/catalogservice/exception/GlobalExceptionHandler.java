@@ -1,6 +1,7 @@
 package com.nhcarrigan.catalogservice.exception;
 
 import java.util.List;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -56,6 +57,20 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiError> handleDuplicateSku(DuplicateSkuException ex) {
     ApiError body =
         new ApiError(HttpStatus.CONFLICT.value(), "Conflict", ex.getMessage(), List.of());
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+  }
+
+  @ExceptionHandler(OptimisticLockingFailureException.class)
+  public ResponseEntity<ApiError> handleOptimisticLockingFailure(
+      OptimisticLockingFailureException ex) {
+
+    ApiError body =
+        new ApiError(
+            HttpStatus.CONFLICT.value(),
+            "Conflict",
+            "The product was modified by another request. Please retry.",
+            List.of());
+
     return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
   }
 
