@@ -2,6 +2,7 @@ package com.nhcarrigan.catalogservice.service;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
+import com.nhcarrigan.catalogservice.dto.ProductPatchRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
@@ -174,6 +175,43 @@ public class ProductService {
     existing.setPrice(request.getPrice());
     existing.setStockQuantity(request.getStockQuantity());
     existing.setDescription(request.getDescription());
+    return productRepository.save(existing);
+  }
+
+  /**
+   * Update any field(s) of an existing product.
+   *
+   * @param id the id of the product to update
+   * @param request the new field values
+   * @return the updated, persisted product
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
+   *     with the given id
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if the new SKU collides
+   *     with a different existing product
+   */
+  @Transactional
+  @CacheEvict(cacheNames = { "products", "product" }, allEntries = true)
+  public Product patch(Long id, ProductPatchRequest request) {
+    Product existing = findById(id);
+
+    if (request.getSku() != null && !existing.getSku().equalsIgnoreCase(request.getSku())
+        && productRepository.existsBySku(request.getSku())) {
+      throw new DuplicateSkuException(request.getSku());
+    }
+
+    if (request.getName() != null)
+      existing.setName(request.getName());
+    if (request.getSku() != null)
+      existing.setSku(request.getSku());
+    if (request.getCategory() != null)
+      existing.setCategory(request.getCategory());
+    if (request.getPrice() != null)
+      existing.setPrice(request.getPrice());
+    if (request.getStockQuantity() != null)
+      existing.setStockQuantity(request.getStockQuantity());
+    if (request.getDescription() != null)
+      existing.setDescription(request.getDescription());
+
     return productRepository.save(existing);
   }
 

@@ -847,4 +847,45 @@ class ProductControllerTest {
                 .content(objectMapper.writeValueAsString(request2)))
                 .andExpect(jsonPath("$.warning").doesNotExist());
     }
+
+    @Test
+    void patchProductSomeFields() throws Exception {
+        Product original = productRepository.findById(4L).orElseThrow();
+        
+        // convert to deep copy
+        original = objectMapper.readValue(objectMapper.writeValueAsString(original), Product.class);
+
+        mockMvc.perform(patch("/api/products/4").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                            {
+                                "name": "Patch test product name",
+                                "description": "Test description."
+                            }
+                        """))
+                .andExpectAll(
+                        jsonPath("$.name", is("Patch test product name")),
+                        jsonPath("$.description", is("Test description.")),
+                        jsonPath("$.sku", is(original.getSku())),
+                        jsonPath("$.category", is(original.getCategory())),
+                        jsonPath("$.price", is(original.getPrice().doubleValue())),
+                        jsonPath("$.stockQuantity", is(original.getStockQuantity())));
+    }
+
+    @Test
+    void patchProductNoFields() throws Exception {
+        Product original = productRepository.findById(4L).orElseThrow();
+
+        // convert to deep copy
+        original = objectMapper.readValue(objectMapper.writeValueAsString(original), Product.class);
+
+        mockMvc.perform(patch("/api/products/4").contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpectAll(
+                        jsonPath("$.name", is(original.getName())),
+                        jsonPath("$.sku", is(original.getSku())),
+                        jsonPath("$.category", is(original.getCategory())),
+                        jsonPath("$.price", is(original.getPrice().doubleValue())),
+                        jsonPath("$.stockQuantity", is(original.getStockQuantity())),
+                        jsonPath("$.description", is(original.getDescription())));
+    }
 }

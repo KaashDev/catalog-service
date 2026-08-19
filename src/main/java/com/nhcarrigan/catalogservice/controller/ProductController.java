@@ -4,6 +4,7 @@ import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
 import com.nhcarrigan.catalogservice.dto.ProductCreationResponse;
 import com.nhcarrigan.catalogservice.dto.ProductPageResponse;
+import com.nhcarrigan.catalogservice.dto.ProductPatchRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
@@ -175,6 +176,22 @@ public class ProductController {
   @PutMapping("/{id}")
   public Product update(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
     return productService.update(id, request);
+  }
+
+  /**
+   * Update any field(s) of an existing product.
+   *
+   * @param id the id of the product to update
+   * @param request the new field values; validated via {@link Valid}
+   * @return the updated product
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
+   *     with the given id
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if the new SKU collides
+   *     with a different existing product
+   */
+  @PatchMapping("/{id}")
+  public Product patch(@PathVariable Long id, @Valid @RequestBody ProductPatchRequest request) {
+    return productService.patch(id, request);
   }
 
   /**
