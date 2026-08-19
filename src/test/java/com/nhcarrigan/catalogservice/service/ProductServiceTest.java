@@ -84,6 +84,32 @@ class ProductServiceTest {
   }
 
   @Test
+  void bulkCreateRollsBackEntireBatchWhenOneRequestFails(){
+    Product existingProduct = createTestProduct("TEST-SKU-1975", 20);
+    ProductRequest request1 = new ProductRequest();
+    request1.setName("Another Widget");
+    request1.setSku("TEST-SKU-1974");
+    request1.setCategory("Test Category");
+    request1.setPrice(new BigDecimal("5.00"));
+    request1.setStockQuantity(5);
+
+    ProductRequest request2 = new ProductRequest();
+    request2.setName("Another Widget");
+    request2.setSku(existingProduct.getSku());
+    request2.setCategory("Test Category");
+    request2.setPrice(new BigDecimal("5.00"));
+    request2.setStockQuantity(5);
+
+    List<ProductRequest> requests  = List.of(request1, request2);
+
+    assertThatThrownBy(() -> productService.bulkCreate(requests))
+            .isInstanceOf(DuplicateSkuException.class);
+
+    assertThat(productRepository.existsBySku(request1.getSku())).isFalse();
+    assertThat(productRepository.existsBySku(existingProduct.getSku())).isTrue();
+  }
+
+  @Test
   void adjustStockIncrementsQuantity() {
     Product updated = productService.adjustStock(testProduct.getId(), 5);
     assertThat(updated.getStockQuantity()).isEqualTo(15);
