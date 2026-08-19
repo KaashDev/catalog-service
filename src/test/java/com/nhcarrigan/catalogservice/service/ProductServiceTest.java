@@ -104,6 +104,24 @@ class ProductServiceTest {
   }
 
   @Test
+  void adjustStockCreatesALogIncludingProductNameAndSKU() {
+    productService.adjustStock(testProduct.getId(), 5);
+
+    productService.delete(testProduct.getId());
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+
+    assertThat(logs.get(0).getProductName()).isEqualTo(testProduct.getName());
+    assertThat(logs.get(0).getProductSku()).isEqualTo(testProduct.getSku());
+    assertThat(logs.get(0).getProductId()).isEqualTo(testProduct.getId());
+    assertThat(logs.get(0).getDelta()).isEqualTo(5);
+    assertThat(logs.get(0).getResultingQuantity()).isEqualTo(15);
+    assertThat(logs.get(0).getTimestamp()).isNotNull();
+    assertThat(productRepository.findById(testProduct.getId())).isEmpty();
+  }
+
+  @Test
   void adjustStockDecrementsQuantity() {
     Product updated = productService.adjustStock(testProduct.getId(), -4);
     assertThat(updated.getStockQuantity()).isEqualTo(6);

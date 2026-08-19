@@ -180,6 +180,10 @@ public class ProductService {
   /**
    * Deletes a product by its id.
    *
+   * <p>Log rows still reference the deleted product's id, but remain meaningful on
+   * their own since each one already captures the product's name and SKU at the
+   * time it was written.
+   *
    * @param id the id of the product to delete
    * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
    *     with the given id
@@ -213,7 +217,7 @@ public class ProductService {
     product.setStockQuantity(newQuantity);
     Product savedProduct = productRepository.save(product);
 
-    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity));
+    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity, product.getName(), product.getSku()));
 
     return savedProduct;
   }
@@ -258,7 +262,7 @@ public class ProductService {
 
       projectedStock.put(productId, newQuantity);
 
-      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity));
+      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity, product.getName(), product.getSku()));
     }
 
     // Phase 2: apply changes only after the entire batch is valid.
