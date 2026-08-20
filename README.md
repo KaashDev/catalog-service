@@ -146,6 +146,140 @@ requires both `productId` and `delta`.
 Validation failures return `400 Bad Request`. Missing products return
 `404 Not Found`, and insufficient stock returns `422 Unprocessable Entity`.
 
+## Getting Started: Example API Requests
+
+Once the application is running locally, the Products API is available at `http://localhost:8080/api/products`.
+
+The following examples show a complete request/response cycle using `curl`.
+
+### 1. List products
+
+Use `GET /api/products` to retrieve the available products:
+
+```bash
+curl -X GET http://localhost:8080/api/products
+```
+
+Example response:
+
+```
+{
+  "content": [
+    {
+      "id": 1,
+      "name": "Mechanical Keyboard",
+      "sku": "SKU-1001",
+      "category": "Electronics",
+      "price": 89.99,
+      "stockQuantity": 42,
+      "description": "A high densile mechanical keyboard, perfect for gaming."
+    },
+    {
+      "id": 2,
+      "name": "Ergonomic Mouse",
+      "sku": "SKU-1002",
+      "category": "Electronics",
+      "price": 34.50,
+      "stockQuantity": 75,
+      "description": "An ergonomic mouse that reduces hand strain."
+    }
+  ],
+  "totalElements": 7,
+  "totalPages": 1
+}
+```
+The response contains the product collection together with pagination information.
+
+### 2. Fetch a product by ID
+
+Use `GET /api/products/{id}` to retrieve a single product:
+
+```bash
+curl -X GET http://localhost:8080/api/products/1
+```
+
+Example response:
+
+```
+{
+  "id": 1,
+  "name": "Mechanical Keyboard",
+  "sku": "SKU-1001",
+  "category": "Electronics",
+  "price": 89.99,
+  "stockQuantity": 42,
+  "description": "A high densile mechanical keyboard, perfect for gaming."
+}
+
+```
+
+### 3. Create a product
+
+Use `POST /api/products` with a JSON request body to create a new product:
+
+```bash
+curl -X POST http://localhost:8080/api/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Product",
+    "sku": "TEST-001",
+    "category": "Testing",
+    "price": 10.00,
+    "stockQuantity": 5,
+    "description": "Test Product"
+  }'
+```
+
+Example response:
+
+```
+{
+  "id": 9,
+  "name": "Test Product",
+  "sku": "TEST-001",
+  "category": "Testing",
+  "price": 10.00,
+  "stockQuantity": 5,
+  "description": "Test Product"
+}
+```
+
+The newly created product is returned with its generated id.
+
+### Other available endpoints
+
+The Products API also supports operations such as searching, updating, deleting, and changing product stock:
+
+- `GET /api/products/search`
+- `PUT /api/products/{id}`
+- `DELETE /api/products/{id}`
+- `PATCH /api/products/{id}/stock`
+- `PATCH /api/products/stock/bulk`
+
+
+```bash
+curl -X GET "http://localhost:8080/api/products/search?name=Keyboard"
+```
+
+Example response:
+
+```
+[
+  {
+    "id": 1,
+    "name": "Mechanical Keyboard",
+    "sku": "SKU-1001",
+    "category": "Electronics",
+    "price": 89.99,
+    "stockQuantity": 42,
+    "description": "A high densile mechanical keyboard, perfect for gaming."
+  }
+]
+
+```
+
+This provides a quick way to verify that the application is running and that the main Products API operations are working as expected.
+
 ## Project layout
 
 ```

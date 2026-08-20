@@ -2,6 +2,7 @@ package com.nhcarrigan.catalogservice.service;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.InventoryValueResponse;
+import com.nhcarrigan.catalogservice.dto.ProductPatchRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
@@ -19,6 +20,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -50,6 +53,7 @@ public class ProductService {
    * @return a page containing the requested products and pagination metadata
    */
   @Transactional(readOnly = true)
+  @Cacheable(cacheNames = "products")
   public Page<Product> findAll(Pageable pageable) {
     return productRepository.findAll(pageable);
   }
@@ -63,14 +67,25 @@ public class ProductService {
    *     with the given id
    */
   @Transactional(readOnly = true)
+  @Cacheable(cacheNames = "product", key = "#id")
   public Product findById(Long id) {
     return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
   }
 
+  /**
+   * Retrieves all stock adjustment log rows for a specified product.
+   *
+   * <p>If two or more logs' timestamps are tied, then log rows are ordered by log row id(in descending order).
+   *
+   * @param productId the id of the product to be searched
+   * @return matching log rows in descending order of timestamp.
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists with the given id
+   */
+
   @Transactional(readOnly = true)
   public List<StockAdjustmentLog> getStockHistory(Long productId) {
     findById(productId);
-    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(productId);
+    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(productId);
   }
 
   /**
@@ -125,6 +140,9 @@ public class ProductService {
    *     same SKU already exists
    */
   @Transactional
+  @CacheEvict(
+      cacheNames = {"products", "product"},
+      allEntries = true)
   public Product create(ProductRequest request) {
     if (productRepository.existsBySku(request.getSku())) {
       throw new DuplicateSkuException(request.getSku());
@@ -189,6 +207,9 @@ public class ProductService {
    *     with a different existing product
    */
   @Transactional
+  @CacheEvict(
+      cacheNames = {"products", "product"},
+      allEntries = true)
   public Product update(Long id, ProductRequest request) {
     Product existing = findById(id);
 
@@ -207,13 +228,57 @@ public class ProductService {
   }
 
   /**
+   * Update any field(s) of an existing product.
+   *
+   * @param id the id of the product to update
+   * @param request the new field values
+   * @return the updated, persisted product
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
+   *     with the given id
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if the new SKU collides
+   *     with a different existing product
+   */
+  @Transactional
+  @CacheEvict(cacheNames = { "products", "product" }, allEntries = true)
+  public Product patch(Long id, ProductPatchRequest request) {
+    Product existing = findById(id);
+
+    if (request.getSku() != null && !existing.getSku().equalsIgnoreCase(request.getSku())
+        && productRepository.existsBySku(request.getSku())) {
+      throw new DuplicateSkuException(request.getSku());
+    }
+
+    if (request.getName() != null)
+      existing.setName(request.getName());
+    if (request.getSku() != null)
+      existing.setSku(request.getSku());
+    if (request.getCategory() != null)
+      existing.setCategory(request.getCategory());
+    if (request.getPrice() != null)
+      existing.setPrice(request.getPrice());
+    if (request.getStockQuantity() != null)
+      existing.setStockQuantity(request.getStockQuantity());
+    if (request.getDescription() != null)
+      existing.setDescription(request.getDescription());
+
+    return productRepository.save(existing);
+  }
+
+  /**
    * Deletes a product by its id.
+   *
+   * <p>Log rows still reference the deleted product's id, but remain meaningful on
+   * their own since each one already captures the product's name and SKU at the
+   * time it was written.
    *
    * @param id the id of the product to delete
    * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists
    *     with the given id
    */
   @Transactional
+  @CacheEvict(
+      cacheNames = {"products", "product"},
+      allEntries = true)
   public void delete(Long id) {
     Product existing = findById(id);
     productRepository.delete(existing);
@@ -225,6 +290,9 @@ public class ProductService {
    * zero.
    */
   @Transactional
+  @CacheEvict(
+      cacheNames = {"products", "product"},
+      allEntries = true)
   public Product adjustStock(Long id, int delta) {
     Product product = findById(id);
     int newQuantity = product.getStockQuantity() + delta;
@@ -236,7 +304,7 @@ public class ProductService {
     product.setStockQuantity(newQuantity);
     Product savedProduct = productRepository.save(product);
 
-    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity));
+    stockAdjustmentLogRepository.save(new StockAdjustmentLog(id, delta, newQuantity, product.getName(), product.getSku()));
 
     return savedProduct;
   }
@@ -256,6 +324,9 @@ public class ProductService {
    *     would result in negative stock
    */
   @Transactional
+  @CacheEvict(
+      cacheNames = {"products", "product"},
+      allEntries = true)
   public List<Product> bulkAdjustStock(List<BulkStockAdjustmentRequest> adjustments) {
 
     Map<Long, Product> productsById = new LinkedHashMap<>();
@@ -278,7 +349,7 @@ public class ProductService {
 
       projectedStock.put(productId, newQuantity);
 
-      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity));
+      logs.add(new StockAdjustmentLog(productId, adjustment.delta(), newQuantity, product.getName(), product.getSku()));
     }
 
     // Phase 2: apply changes only after the entire batch is valid.
@@ -305,6 +376,7 @@ public class ProductService {
    *     range is reversed
    */
   @Transactional(readOnly = true)
+  @Cacheable(cacheNames = "products")
   public Page<Product> filterByPrice(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
     if (minPrice != null && maxPrice != null) {
       // both supplied

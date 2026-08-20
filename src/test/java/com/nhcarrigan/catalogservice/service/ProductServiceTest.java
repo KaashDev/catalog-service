@@ -2,6 +2,7 @@ package com.nhcarrigan.catalogservice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.INSTANT;
 
 import com.nhcarrigan.catalogservice.dto.BulkStockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
@@ -13,11 +14,13 @@ import com.nhcarrigan.catalogservice.exception.ProductNotFoundException;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
 import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -120,13 +123,31 @@ class ProductServiceTest {
     productService.adjustStock(testProduct.getId(), 5);
 
     List<StockAdjustmentLog> logs =
-        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
 
     assertThat(logs).hasSize(1);
     assertThat(logs.get(0).getProductId()).isEqualTo(testProduct.getId());
     assertThat(logs.get(0).getDelta()).isEqualTo(5);
     assertThat(logs.get(0).getResultingQuantity()).isEqualTo(15);
     assertThat(logs.get(0).getTimestamp()).isNotNull();
+  }
+
+  @Test
+  void adjustStockCreatesALogIncludingProductNameAndSKU() {
+    productService.adjustStock(testProduct.getId(), 5);
+
+    productService.delete(testProduct.getId());
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
+    assertThat(logs.get(0).getProductName()).isEqualTo(testProduct.getName());
+    assertThat(logs.get(0).getProductSku()).isEqualTo(testProduct.getSku());
+    assertThat(logs.get(0).getProductId()).isEqualTo(testProduct.getId());
+    assertThat(logs.get(0).getDelta()).isEqualTo(5);
+    assertThat(logs.get(0).getResultingQuantity()).isEqualTo(15);
+    assertThat(logs.get(0).getTimestamp()).isNotNull();
+    assertThat(productRepository.findById(testProduct.getId())).isEmpty();
   }
 
   @Test
@@ -151,7 +172,8 @@ class ProductServiceTest {
         .isInstanceOf(InsufficientStockException.class);
 
     List<StockAdjustmentLog> logs =
-        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
 
     assertThat(logs).isEmpty();
   }
@@ -196,10 +218,10 @@ class ProductServiceTest {
     productService.bulkAdjustStock(adjustments);
 
     List<StockAdjustmentLog> firstProductLogs =
-        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
 
     List<StockAdjustmentLog> secondProductLogs =
-        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(secondProduct.getId());
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(secondProduct.getId());
 
     assertThat(firstProductLogs).hasSize(1);
     assertThat(firstProductLogs.get(0).getDelta()).isEqualTo(5);
@@ -283,7 +305,8 @@ class ProductServiceTest {
     productService.bulkAdjustStock(adjustments);
 
     List<StockAdjustmentLog> logs =
-        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
 
     assertThat(logs).hasSize(2);
 
@@ -292,5 +315,28 @@ class ProductServiceTest {
 
     assertThat(logs.get(1).getDelta()).isEqualTo(5);
     assertThat(logs.get(1).getResultingQuantity()).isEqualTo(15);
+  }
+
+  @Test
+  void getStockHistoryBreaksTiedTimestampsByIdDescending() {
+    StockAdjustmentLog older = new StockAdjustmentLog(testProduct.getId(), 5, 15, testProduct.getName(), testProduct.getSku());
+    StockAdjustmentLog newer = new StockAdjustmentLog(testProduct.getId(), -3, 12, testProduct.getName(), testProduct.getSku());
+    Instant timestamp1 = Instant.now();
+
+    ReflectionTestUtils.setField(older, "timestamp", timestamp1);
+    ReflectionTestUtils.setField(newer, "timestamp", timestamp1);
+
+    stockAdjustmentLogRepository.save(older);
+    stockAdjustmentLogRepository.save(newer);
+
+
+    List<StockAdjustmentLog> logs =
+            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
+    assertThat(logs.get(0).getResultingQuantity()).isEqualTo(12);
+    assertThat(logs.get(0).getTimestamp()).isEqualTo(timestamp1);
+    assertThat(logs.get(1).getResultingQuantity()).isEqualTo(15);
+    assertThat(logs.get(1).getTimestamp()).isEqualTo(timestamp1);
+
   }
 }
