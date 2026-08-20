@@ -16,6 +16,8 @@ import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,6 +89,32 @@ class ProductServiceTest {
   }
 
   @Test
+  void bulkCreateRollsBackEntireBatchWhenOneRequestFails() {
+    Product existingProduct = createTestProduct("TEST-SKU-1975", 20);
+    ProductRequest request1 = new ProductRequest();
+    request1.setName("Another Widget");
+    request1.setSku("TEST-SKU-1974");
+    request1.setCategory("Test Category");
+    request1.setPrice(new BigDecimal("5.00"));
+    request1.setStockQuantity(5);
+
+    ProductRequest request2 = new ProductRequest();
+    request2.setName("Another Widget");
+    request2.setSku(existingProduct.getSku());
+    request2.setCategory("Test Category");
+    request2.setPrice(new BigDecimal("5.00"));
+    request2.setStockQuantity(5);
+
+    List<ProductRequest> requests = List.of(request1, request2);
+
+    assertThatThrownBy(() -> productService.bulkCreate(requests))
+        .isInstanceOf(DuplicateSkuException.class);
+
+    assertThat(productRepository.existsBySku(request1.getSku())).isFalse();
+    assertThat(productRepository.existsBySku(existingProduct.getSku())).isTrue();
+  }
+
+  @Test
   void adjustStockIncrementsQuantity() {
     Product updated = productService.adjustStock(testProduct.getId(), 5);
     assertThat(updated.getStockQuantity()).isEqualTo(15);
@@ -143,10 +171,11 @@ class ProductServiceTest {
   @Test
   void rejectedAdjustmentCreatesNoLog() {
     assertThatThrownBy(() -> productService.adjustStock(testProduct.getId(), -11))
-            .isInstanceOf(InsufficientStockException.class);
+        .isInstanceOf(InsufficientStockException.class);
 
     List<StockAdjustmentLog> logs =
             stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
 
     assertThat(logs).isEmpty();
   }
@@ -184,9 +213,9 @@ class ProductServiceTest {
     Product secondProduct = createTestProduct("TEST-SKU-" + System.nanoTime(), 20);
 
     List<BulkStockAdjustmentRequest> adjustments =
-            List.of(
-                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
-                    new BulkStockAdjustmentRequest(secondProduct.getId(), -4));
+        List.of(
+            new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+            new BulkStockAdjustmentRequest(secondProduct.getId(), -4));
 
     productService.bulkAdjustStock(adjustments);
 
@@ -271,14 +300,15 @@ class ProductServiceTest {
   @Test
   void bulkAdjustStockCreatesLogForEachRepeatedAdjustment() {
     List<BulkStockAdjustmentRequest> adjustments =
-            List.of(
-                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
-                    new BulkStockAdjustmentRequest(testProduct.getId(), -3));
+        List.of(
+            new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+            new BulkStockAdjustmentRequest(testProduct.getId(), -3));
 
     productService.bulkAdjustStock(adjustments);
 
     List<StockAdjustmentLog> logs =
             stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(testProduct.getId());
+
 
     assertThat(logs).hasSize(2);
 
@@ -310,5 +340,59 @@ class ProductServiceTest {
     assertThat(logs.get(1).getResultingQuantity()).isEqualTo(15);
     assertThat(logs.get(1).getTimestamp()).isEqualTo(timestamp1);
 
+  }
+
+  @Test
+  void createRejectsDuplicateButCanonicallyDifferingSku() {
+    ProductRequest duplicate = new ProductRequest();
+    duplicate.setName("Another Widget");
+    duplicate.setSku(testProduct.getSku().toLowerCase());
+    duplicate.setCategory("Test Category");
+    duplicate.setPrice(new BigDecimal("5.00"));
+    duplicate.setStockQuantity(5);
+
+    assertThatThrownBy(() -> productService.create(duplicate))
+            .isInstanceOf(DuplicateSkuException.class);
+  }
+
+  @Test
+  void createRegistersUppercaseSku() {
+    ProductRequest request = new ProductRequest();
+    request.setName("Some Product");
+    request.setSku("test-sku-" + System.nanoTime());
+    request.setCategory("Test Category");
+    request.setPrice(new BigDecimal("5.00"));
+    request.setStockQuantity(5);
+
+    Product created = productService.create(request);
+    assertThat(created.getSku()).isEqualTo(request.getSku().toUpperCase(Locale.ROOT));
+  }
+
+  @Test
+  void updateOwnSkuToLowercaseIsNotCollision(){
+    ProductRequest request = new ProductRequest();
+    request.setName(testProduct.getName());
+    request.setSku(testProduct.getSku().toLowerCase(Locale.ROOT));
+    request.setCategory(testProduct.getCategory());
+    request.setPrice(testProduct.getPrice());
+    request.setStockQuantity(testProduct.getStockQuantity());
+
+    Product updated = productService.update(testProduct.getId(), request);
+    assertThat(updated.getSku()).isEqualTo(testProduct.getSku());
+  }
+
+  @Test
+  void updateSkuToExistingSkuCollides(){
+    Product secondProduct = createTestProduct("TEST-SKU-" + System.nanoTime(), 5);
+
+    ProductRequest request = new ProductRequest();
+    request.setName("Some Product");
+    request.setSku(secondProduct.getSku().toLowerCase(Locale.ROOT));
+    request.setCategory("Test Category");
+    request.setPrice(new BigDecimal("5.00"));
+    request.setStockQuantity(5);
+
+    assertThatThrownBy(() -> productService.update(testProduct.getId(), request))
+            .isInstanceOf(DuplicateSkuException.class);
   }
 }
