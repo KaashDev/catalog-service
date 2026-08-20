@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StockAdjustmentLogRepository extends JpaRepository<StockAdjustmentLog, Long> {
 
-  List<StockAdjustmentLog> findByProductIdOrderByTimestampDesc(Long productId);
+  List<StockAdjustmentLog> findByProductIdOrderByTimestampDescIdDesc(Long productId);
 }

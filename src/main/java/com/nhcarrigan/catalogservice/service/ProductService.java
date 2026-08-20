@@ -70,10 +70,20 @@ public class ProductService {
     return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
   }
 
+  /**
+   * Retrieves all stock adjustment log rows for a specified product.
+   *
+   * <p>If two or more logs' timestamps are tied, then log rows are ordered by log row id(in descending order).
+   *
+   * @param productId the id of the product to be searched
+   * @return matching log rows in descending order of timestamp.
+   * @throws com.nhcarrigan.catalogservice.exception.ProductNotFoundException if no product exists with the given id
+   */
+
   @Transactional(readOnly = true)
   public List<StockAdjustmentLog> getStockHistory(Long productId) {
     findById(productId);
-    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(productId);
+    return stockAdjustmentLogRepository.findByProductIdOrderByTimestampDescIdDesc(productId);
   }
 
   /**
