@@ -12,12 +12,12 @@ import com.nhcarrigan.catalogservice.exception.ProductNotFoundException;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
 import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import java.math.BigDecimal;
-import java.util.*;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -140,43 +140,43 @@ public class ProductService {
     return productRepository.save(product);
   }
 
-    /**
-     * Creates and persists multiple products as one atomic operation.
-     *
-     * <p>Every product is validated before any persistence occurs.
-     * If any sku already exists in the database,
-     * or two products to be added have the same sku,
-     * the entire batch is rejected and the transaction is rolled back.
-     *
-     * @param requests the product creation requests
-     * @return the products created by the batch
-     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
-     *         if sku already exists or duplicate sku in batch
-     */
+  /**
+   * Creates and persists multiple products as one atomic operation.
+   *
+   * <p>Every product is validated before any persistence occurs. If any sku already exists in the
+   * database, or two products to be added have the same sku, the entire batch is rejected and the
+   * transaction is rolled back.
+   *
+   * @param requests the product creation requests
+   * @return the products created by the batch
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if sku already exists or
+   *     duplicate sku in batch
+   */
   @Transactional
-  public List<Product> bulkCreate(List<ProductRequest> requests){
-      Set<String> newSku = new HashSet<>();
-      List<Product> newProducts = new ArrayList<>();
+  public List<Product> bulkCreate(List<ProductRequest> requests) {
+    Set<String> newSku = new HashSet<>();
+    List<Product> newProducts = new ArrayList<>();
 
-      for(ProductRequest request : requests){
-          if (productRepository.existsBySku(request.getSku())) {
-              throw new DuplicateSkuException(request.getSku());
-          }
-          if (!newSku.add(request.getSku())) {
-              throw new DuplicateSkuException(request.getSku());
-          }
-          Product product =
-                  new Product(
-                          request.getName(),
-                          request.getSku(),
-                          request.getCategory(),
-                          request.getPrice(),
-                          request.getStockQuantity(),
-                          request.getDescription());
-          newProducts.add(product);
+    for (ProductRequest request : requests) {
+      if (productRepository.existsBySku(request.getSku())) {
+        throw new DuplicateSkuException(request.getSku());
       }
-      return productRepository.saveAll(newProducts);
+      if (!newSku.add(request.getSku())) {
+        throw new DuplicateSkuException(request.getSku());
+      }
+      Product product =
+          new Product(
+              request.getName(),
+              request.getSku(),
+              request.getCategory(),
+              request.getPrice(),
+              request.getStockQuantity(),
+              request.getDescription());
+      newProducts.add(product);
+    }
+    return productRepository.saveAll(newProducts);
   }
+
   /**
    * Replaces all fields of an existing product.
    *
@@ -329,8 +329,7 @@ public class ProductService {
     BigDecimal totalValue = productRepository.calculateTotalInventoryValue();
 
     Map<String, BigDecimal> byCategory =
-        productRepository.calculateInventoryValueByCategory()
-            .stream()
+        productRepository.calculateInventoryValueByCategory().stream()
             .collect(
                 Collectors.toMap(
                     row -> (String) row[0],

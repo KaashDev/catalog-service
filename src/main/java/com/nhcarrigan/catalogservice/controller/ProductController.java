@@ -111,7 +111,7 @@ public class ProductController {
    */
   @GetMapping("/inventory-value")
   public InventoryValueResponse getInventoryValue() {
-      return productService.getInventoryValue();
+    return productService.getInventoryValue();
   }
 
   /**
@@ -140,26 +140,26 @@ public class ProductController {
     return productService.getStockHistory(id);
   }
 
-    /**
-     * Creates a new product.
-     *
-     * @param request the product fields to create; validated via
-     *                 {@link Valid}
-     * @return a 201 response containing the newly created product
-     * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException
-     *         if a product with the same SKU already exists
-     */
-    @PostMapping
-    public ResponseEntity<ProductCreationResponse> create(@Valid @RequestBody ProductRequest request) {
-        boolean isDuplicateName = !productService.searchByExactName(request.getName()).isEmpty();
+  /**
+   * Creates a new product.
+   *
+   * @param request the product fields to create; validated via {@link Valid}
+   * @return a 201 response containing the newly created product
+   * @throws com.nhcarrigan.catalogservice.exception.DuplicateSkuException if a product with the
+   *     same SKU already exists
+   */
+  @PostMapping
+  public ResponseEntity<ProductCreationResponse> create(
+      @Valid @RequestBody ProductRequest request) {
+    boolean isDuplicateName = !productService.searchByExactName(request.getName()).isEmpty();
 
-        Product created = productService.create(request);
+    Product created = productService.create(request);
 
-        ProductCreationResponse pcr = new ProductCreationResponse(created,
-                isDuplicateName ? "Duplicate Name" : null);
+    ProductCreationResponse pcr =
+        new ProductCreationResponse(created, isDuplicateName ? "Duplicate Name" : null);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(pcr);
-    }
+    return ResponseEntity.status(HttpStatus.CREATED).body(pcr);
+  }
 
   /**
    * Creates multiple new products as one atomic operation.
@@ -171,8 +171,8 @@ public class ProductController {
    */
   @PostMapping("/bulk")
   public ResponseEntity<List<Product>> bulkCreate(
-          @NotEmpty(message = "At least one product is required")
-          @RequestBody List<@Valid ProductRequest> requests) {
+      @NotEmpty(message = "At least one product is required") @RequestBody
+          List<@Valid ProductRequest> requests) {
     return ResponseEntity.status(HttpStatus.CREATED).body(productService.bulkCreate(requests));
   }
 

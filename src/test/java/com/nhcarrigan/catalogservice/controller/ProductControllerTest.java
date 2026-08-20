@@ -16,7 +16,6 @@ import com.nhcarrigan.catalogservice.entity.Product;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
 import java.math.BigDecimal;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -136,17 +135,17 @@ class ProductControllerTest {
   void bulkCreateProductReturns201AndBody() throws Exception {
     ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
     ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
-    List<ProductRequest> requests  = List.of(request1, request2);
+    List<ProductRequest> requests = List.of(request1, request2);
 
     mockMvc
-            .perform(
-                    post("/api/products/bulk")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(requests)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].name", is("Integration Test Product")))
-            .andExpect(jsonPath("$[1].stockQuantity", is(20)));
+        .perform(
+            post("/api/products/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requests)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$[0].name", is("Integration Test Product")))
+        .andExpect(jsonPath("$[1].stockQuantity", is(20)));
   }
 
   @Test
@@ -154,30 +153,30 @@ class ProductControllerTest {
     createTestProduct("SKU-9000", 20);
     ProductRequest request1 = validRequest("SKU-9000");
     ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
-    List<ProductRequest> requests  = List.of(request1, request2);
+    List<ProductRequest> requests = List.of(request1, request2);
 
     mockMvc
-            .perform(
-                    post("/api/products/bulk")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(requests)))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error", is("Conflict")));
+        .perform(
+            post("/api/products/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requests)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error", is("Conflict")));
   }
 
   @Test
   void bulkCreateProductReturnsConflictWhenProductsInBatchShareSKU() throws Exception {
     ProductRequest request1 = validRequest("SKU-6000");
     ProductRequest request2 = validRequest("SKU-6000");
-    List<ProductRequest> requests  = List.of(request1, request2);
+    List<ProductRequest> requests = List.of(request1, request2);
 
     mockMvc
-            .perform(
-                    post("/api/products/bulk")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(requests)))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.error", is("Conflict")));
+        .perform(
+            post("/api/products/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requests)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error", is("Conflict")));
   }
 
   @Test
@@ -283,12 +282,9 @@ class ProductControllerTest {
   void getInventoryValueReturnsTotalAndCategoryBreakdown() throws Exception {
     productRepository.deleteAll();
 
-    createInventoryValueTestProduct(
-        "Keyboard", "INV-VALUE-1", "Electronics", "10.00", 5);
-    createInventoryValueTestProduct(
-        "Mouse", "INV-VALUE-2", "Electronics", "20.00", 3);
-    createInventoryValueTestProduct(
-        "Desk", "INV-VALUE-3", "Furniture", "15.00", 2);
+    createInventoryValueTestProduct("Keyboard", "INV-VALUE-1", "Electronics", "10.00", 5);
+    createInventoryValueTestProduct("Mouse", "INV-VALUE-2", "Electronics", "20.00", 3);
+    createInventoryValueTestProduct("Desk", "INV-VALUE-3", "Furniture", "15.00", 2);
 
     mockMvc
         .perform(get("/api/products/inventory-value"))
@@ -481,34 +477,36 @@ class ProductControllerTest {
     request.setStockQuantity(10);
 
     String body =
-            mockMvc.perform(
-                            post("/api/products")
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andReturn()
-                    .getResponse()
-                    .getContentAsString();
+        mockMvc
+            .perform(
+                post("/api/products")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
     Long id = objectMapper.readTree(body).get("id").asLong();
 
     StockAdjustmentRequest adjustment = new StockAdjustmentRequest();
     adjustment.setDelta(5);
 
-    mockMvc.perform(
-                    patch("/api/products/{id}/stock", id)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(adjustment)))
-            .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            patch("/api/products/{id}/stock", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(adjustment)))
+        .andExpect(status().isOk());
 
     mockMvc
-            .perform(get("/api/products/{id}/stock-history", id))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(1)))
-            .andExpect(jsonPath("$[0].productId", is(id.intValue())))
-            .andExpect(jsonPath("$[0].delta", is(5)))
-            .andExpect(jsonPath("$[0].resultingQuantity", is(15)))
-            .andExpect(jsonPath("$[0].timestamp").exists());
+        .perform(get("/api/products/{id}/stock-history", id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$[0].productId", is(id.intValue())))
+        .andExpect(jsonPath("$[0].delta", is(5)))
+        .andExpect(jsonPath("$[0].resultingQuantity", is(15)))
+        .andExpect(jsonPath("$[0].timestamp").exists());
   }
 
   @Test
@@ -517,15 +515,15 @@ class ProductControllerTest {
     request.setStockQuantity(10);
 
     String body =
-            mockMvc
-                    .perform(
-                            post("/api/products")
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andReturn()
-                    .getResponse()
-                    .getContentAsString();
+        mockMvc
+            .perform(
+                post("/api/products")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
     Long id = objectMapper.readTree(body).get("id").asLong();
 
@@ -533,34 +531,34 @@ class ProductControllerTest {
     firstAdjustment.setDelta(5);
 
     mockMvc.perform(
-            patch("/api/products/{id}/stock", id)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(firstAdjustment)));
+        patch("/api/products/{id}/stock", id)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(firstAdjustment)));
 
     StockAdjustmentRequest secondAdjustment = new StockAdjustmentRequest();
     secondAdjustment.setDelta(-3);
 
     mockMvc.perform(
-            patch("/api/products/{id}/stock", id)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(secondAdjustment)));
+        patch("/api/products/{id}/stock", id)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(secondAdjustment)));
 
     mockMvc
-            .perform(get("/api/products/{id}/stock-history", id))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].delta", is(-3)))
-            .andExpect(jsonPath("$[0].resultingQuantity", is(12)))
-            .andExpect(jsonPath("$[1].delta", is(5)))
-            .andExpect(jsonPath("$[1].resultingQuantity", is(15)));
+        .perform(get("/api/products/{id}/stock-history", id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$[0].delta", is(-3)))
+        .andExpect(jsonPath("$[0].resultingQuantity", is(12)))
+        .andExpect(jsonPath("$[1].delta", is(5)))
+        .andExpect(jsonPath("$[1].resultingQuantity", is(15)));
   }
 
   @Test
   void getStockHistoryForUnknownProductReturns404() throws Exception {
     mockMvc
-            .perform(get("/api/products/{id}/stock-history", 999999))
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.error", is("Not Found")));
+        .perform(get("/api/products/{id}/stock-history", 999999))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error", is("Not Found")));
   }
 
   @Test
@@ -856,45 +854,53 @@ class ProductControllerTest {
                     "Cannot filter using reversed price range: minimum 60 is greater than maximum 18")));
   }
 
-    @Test
-    void creationWithDupeNameProducesWarning() throws Exception {
-        String dupeName = "Test Duplicate Product Name";
-        
-        ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
-        request1.setName(dupeName);
+  @Test
+  void creationWithDupeNameProducesWarning() throws Exception {
+    String dupeName = "Test Duplicate Product Name";
 
-        mockMvc.perform(post("/api/products")
+    ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
+    request1.setName(dupeName);
+
+    mockMvc
+        .perform(
+            post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request1)))
-                .andExpect(jsonPath("$.warning").doesNotExist());
-        
-        ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
-        request2.setName(dupeName.toUpperCase());
+        .andExpect(jsonPath("$.warning").doesNotExist());
 
-        mockMvc.perform(post("/api/products")
+    ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
+    request2.setName(dupeName.toUpperCase());
+
+    mockMvc
+        .perform(
+            post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request2)))
-                .andExpect(jsonPath("$.warning").exists());
-    }
+        .andExpect(jsonPath("$.warning").exists());
+  }
 
-    @Test
-    void creationWithDupeNameSubstringDoesNotProduceWarning() throws Exception {
-        String dupeName = "Test Duplicate Product Name";
-        
-        ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
-        request1.setName(dupeName);
+  @Test
+  void creationWithDupeNameSubstringDoesNotProduceWarning() throws Exception {
+    String dupeName = "Test Duplicate Product Name";
 
-        mockMvc.perform(post("/api/products")
+    ProductRequest request1 = validRequest("CTRL-SKU-" + System.nanoTime());
+    request1.setName(dupeName);
+
+    mockMvc
+        .perform(
+            post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request1)))
-                .andExpect(jsonPath("$.warning").doesNotExist());
-        
-        ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
-        request2.setName(dupeName.substring(0, 5));
+        .andExpect(jsonPath("$.warning").doesNotExist());
 
-        mockMvc.perform(post("/api/products")
+    ProductRequest request2 = validRequest("CTRL-SKU-" + System.nanoTime());
+    request2.setName(dupeName.substring(0, 5));
+
+    mockMvc
+        .perform(
+            post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request2)))
-                .andExpect(jsonPath("$.warning").doesNotExist());
-    }
+        .andExpect(jsonPath("$.warning").doesNotExist());
+  }
 }

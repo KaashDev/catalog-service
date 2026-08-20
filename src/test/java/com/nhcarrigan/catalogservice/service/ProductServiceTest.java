@@ -84,7 +84,7 @@ class ProductServiceTest {
   }
 
   @Test
-  void bulkCreateRollsBackEntireBatchWhenOneRequestFails(){
+  void bulkCreateRollsBackEntireBatchWhenOneRequestFails() {
     Product existingProduct = createTestProduct("TEST-SKU-1975", 20);
     ProductRequest request1 = new ProductRequest();
     request1.setName("Another Widget");
@@ -100,10 +100,10 @@ class ProductServiceTest {
     request2.setPrice(new BigDecimal("5.00"));
     request2.setStockQuantity(5);
 
-    List<ProductRequest> requests  = List.of(request1, request2);
+    List<ProductRequest> requests = List.of(request1, request2);
 
     assertThatThrownBy(() -> productService.bulkCreate(requests))
-            .isInstanceOf(DuplicateSkuException.class);
+        .isInstanceOf(DuplicateSkuException.class);
 
     assertThat(productRepository.existsBySku(request1.getSku())).isFalse();
     assertThat(productRepository.existsBySku(existingProduct.getSku())).isTrue();
@@ -120,7 +120,7 @@ class ProductServiceTest {
     productService.adjustStock(testProduct.getId(), 5);
 
     List<StockAdjustmentLog> logs =
-            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
 
     assertThat(logs).hasSize(1);
     assertThat(logs.get(0).getProductId()).isEqualTo(testProduct.getId());
@@ -148,10 +148,10 @@ class ProductServiceTest {
   @Test
   void rejectedAdjustmentCreatesNoLog() {
     assertThatThrownBy(() -> productService.adjustStock(testProduct.getId(), -11))
-            .isInstanceOf(InsufficientStockException.class);
+        .isInstanceOf(InsufficientStockException.class);
 
     List<StockAdjustmentLog> logs =
-            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
 
     assertThat(logs).isEmpty();
   }
@@ -189,17 +189,17 @@ class ProductServiceTest {
     Product secondProduct = createTestProduct("TEST-SKU-" + System.nanoTime(), 20);
 
     List<BulkStockAdjustmentRequest> adjustments =
-            List.of(
-                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
-                    new BulkStockAdjustmentRequest(secondProduct.getId(), -4));
+        List.of(
+            new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+            new BulkStockAdjustmentRequest(secondProduct.getId(), -4));
 
     productService.bulkAdjustStock(adjustments);
 
     List<StockAdjustmentLog> firstProductLogs =
-            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
 
     List<StockAdjustmentLog> secondProductLogs =
-            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(secondProduct.getId());
+        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(secondProduct.getId());
 
     assertThat(firstProductLogs).hasSize(1);
     assertThat(firstProductLogs.get(0).getDelta()).isEqualTo(5);
@@ -276,14 +276,14 @@ class ProductServiceTest {
   @Test
   void bulkAdjustStockCreatesLogForEachRepeatedAdjustment() {
     List<BulkStockAdjustmentRequest> adjustments =
-            List.of(
-                    new BulkStockAdjustmentRequest(testProduct.getId(), 5),
-                    new BulkStockAdjustmentRequest(testProduct.getId(), -3));
+        List.of(
+            new BulkStockAdjustmentRequest(testProduct.getId(), 5),
+            new BulkStockAdjustmentRequest(testProduct.getId(), -3));
 
     productService.bulkAdjustStock(adjustments);
 
     List<StockAdjustmentLog> logs =
-            stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
+        stockAdjustmentLogRepository.findByProductIdOrderByTimestampDesc(testProduct.getId());
 
     assertThat(logs).hasSize(2);
 
