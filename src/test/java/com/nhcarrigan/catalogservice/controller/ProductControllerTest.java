@@ -13,8 +13,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nhcarrigan.catalogservice.dto.ProductRequest;
 import com.nhcarrigan.catalogservice.dto.StockAdjustmentRequest;
 import com.nhcarrigan.catalogservice.entity.Product;
+import com.nhcarrigan.catalogservice.entity.StockAdjustmentLog;
 import com.nhcarrigan.catalogservice.repository.ProductRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+
+import com.nhcarrigan.catalogservice.repository.StockAdjustmentLogRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +42,8 @@ class ProductControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @Autowired private ProductRepository productRepository;
+
+  @Autowired private StockAdjustmentLogRepository stockAdjustmentLogRepository;
 
   private ProductRequest validRequest(String sku) {
     ProductRequest request = new ProductRequest();
@@ -887,5 +895,26 @@ class ProductControllerTest {
                         jsonPath("$.price", is(original.getPrice().doubleValue())),
                         jsonPath("$.stockQuantity", is(original.getStockQuantity())),
                         jsonPath("$.description", is(original.getDescription())));
+    }
+
+    @Test
+    void getStockHistoryBreaksTiedTimestampsByIdDescending() throws Exception {
+      Product testProduct = createTestProduct("BULK-TEST-1", 20);
+      StockAdjustmentLog older = new StockAdjustmentLog(testProduct.getId(), 5, 15, testProduct.getName(), testProduct.getSku());
+      StockAdjustmentLog newer = new StockAdjustmentLog(testProduct.getId(), -3, 12, testProduct.getName(), testProduct.getSku());
+      Instant timestamp1 = Instant.now();
+
+      ReflectionTestUtils.setField(older, "timestamp", timestamp1);
+      ReflectionTestUtils.setField(newer, "timestamp", timestamp1);
+
+      stockAdjustmentLogRepository.save(older);
+      stockAdjustmentLogRepository.save(newer);
+
+      mockMvc
+              .perform(get("/api/products/{id}/stock-history", testProduct.getId()))
+              .andExpect(status().isOk())
+              .andExpect(jsonPath("$", hasSize(2)))
+              .andExpect(jsonPath("$[0].resultingQuantity", is(12)))
+              .andExpect(jsonPath("$[1].resultingQuantity", is(15)));
     }
 }
